@@ -7,11 +7,14 @@ This repository contains the data sets and code for my DS 785 Capstone project.
 
 ## Usage
 
+The contents of this repository contain the data and code necessary to recreate the EV detection model for the capstone project. 
+
 ## Directory Layout
 
 A quick guide to the repository directory layout:
 
-
+* `raw_data` - this directory contains the raw data directly from the Meter Data Management System (MDMS).
+* `Raw Data Analysis.rmd` - R file to examine association between raw primary meter and EV meter data. 
 
 ## Contributing
 

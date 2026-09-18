@@ -1,0 +1,68 @@
+---
+title: "Analysis"
+output: html_document
+date: "2026-09-18"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(ggplot2)
+
+```
+
+## Initial Load
+
+Load the sample meters (primary and EV) and take a look at the usage curves.
+
+```{r load}
+
+primaryMeter = read_csv("raw_data/41100_readings_09012026-09182026.corrected.csv")
+evMeter = read_csv("raw_data/ZEF2210154531_readings_09012026-09182026.corrected.csv")
+
+# combine start date and start times
+primaryMeter$start = paste(primaryMeter$`start-date`, primaryMeter$`start-time`, sep=" ")
+evMeter$start = paste(evMeter$`start-date`, evMeter$`start-time`, sep=" ")
+
+# treat as date - thanks Claude
+primaryMeter$start = as.POSIXct(primaryMeter$start, format = "%m-%d-%Y %H:%M")
+evMeter$start = as.POSIXct(evMeter$start, format = "%m-%d-%Y %H:%M")
+
+```
+
+```{r}
+
+ggplot(data = primaryMeter, aes(x = start, y = value)) + geom_line()
+
+```
+```{r}
+
+ggplot(data = evMeter, aes(x = start, y = value)) + geom_line()
+
+```
+
+## One Day
+
+Get a single day's usage to look at a smaller amount of time. Note how the EV meter is 0 most of the time but then shows usage corresponding with when the primary meter also has an uptick. 
+
+### EV demand
+
+```{r}
+
+quarterHour = 7.68/4
+fiveMinute = quarterHour/3
+
+```
+
+The lowest amount of demand (kW) on a level 2 EV charger is 7.68 kW - that is a 40 amp charger. In a 15 minute interval the total kWh would be: `quarterHour`. Assuming the charger was not on for the whole 15 minutes a 5 minute increment would be: `fiveMinute`. Safe to assume any usage over 1kWh the EV charger is on, while less than that it's in "idle" state. Idle may use some small amount of power. 
+
+
+```{r}
+
+singlePrimary = primaryMeter[primaryMeter$`start-date` == '09-02-2026', ]
+singleEV = evMeter[evMeter$`start-date` == '09-02-2026', ]
+
+ggplot() + 
+  geom_line(data = singlePrimary, aes(x = start, y = value), color = "blue") +
+  geom_line(data = singleEV, aes(x = start, y = value), color = "red")
+```
