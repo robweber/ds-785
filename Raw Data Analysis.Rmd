@@ -11,14 +11,22 @@ library(ggplot2)
 
 ```
 
+## Data Gathering
+
+Some notes on how data was gathered from the source system (Meter Data Management). 
+
+* only EV accounts with a full year of usage used (connect date prior to Oct 1 2025)
+* full year worth of usage data
+* standalone homes (no apts)
+
 ## Initial Load
 
 Load the sample meters (primary and EV) and take a look at the usage curves.
 
 ```{r load}
 
-primaryMeter = read_csv("raw_data/41100_readings_09012026-09182026.corrected.csv")
-evMeter = read_csv("raw_data/ZEF2210154531_readings_09012026-09182026.corrected.csv")
+primaryMeter = read_csv("raw_data/ev/12479002_readings_10012025-09292026.primary.csv")
+evMeter = read_csv("raw_data/ev/12479002_readings_10012025-09292026.ev.csv")
 
 # combine start date and start times
 primaryMeter$start = paste(primaryMeter$`start-date`, primaryMeter$`start-time`, sep=" ")
@@ -66,3 +74,10 @@ ggplot() +
   geom_line(data = singlePrimary, aes(x = start, y = value), color = "blue") +
   geom_line(data = singleEV, aes(x = start, y = value), color = "red")
 ```
+
+## EV Data
+
+Not a lot can be done until the EV and primary meter data is merged. Do this and then load in one of the combined files that includes EV labeling. 
+
+* how many intervals are EV vs non-EV
+* break this down by 
