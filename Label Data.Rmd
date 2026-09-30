@@ -1,0 +1,97 @@
+---
+title: "Label Data"
+output: html_document
+date: "2026-09-28"
+---
+
+This file will add a column `EV` to raw MDMS data. The column will read either `TRUE` or `FALSE` depending on if the data contains kWh values that are known to coincide with EV charging. 
+
+### Usage
+
+Set the `MERGE_EV` variable at the top of the file and run the cells. When combining EV data the labeling will overlap kWh usage with data from EV chargers during the same time windows. Where they overlap the `EV` value will be `TRUE`. 
+
+When labeling non-EV data the column will always be `FALSE`. 
+
+```{r setup, include=FALSE}
+library(readr)
+
+# set this to TRUE for labeling EV data, FALSE for non-EV Data
+MERGE_EV = TRUE
+
+if(MERGE_EV)
+{
+  # use these paths when labeling EV data
+  DIR_PATH = "raw_data/ev/"
+  OUTPUT_PATH = "labeled_data/ev/"
+} else {
+  # use these paths when labeling EV data
+  DIR_PATH = "raw_data/non-ev/"
+  OUTPUT_PATH = "labeled_data/non-ev/"
+}
+
+```
+
+```{r}
+
+# first list all primary metering files
+
+primary_metering = list.files(path=DIR_PATH, pattern=".primary.csv$", full.names=TRUE)
+
+```
+
+```{r}
+
+combine_ev_data = function(primary_file) {
+  # every primary file should also have an ev meter file
+  ev_file = sub(".primary.csv$", ".ev.csv", primary_file)
+  
+  primary_meter = read_csv(primary_file)
+  ev_meter = read_csv(ev_file)
+  
+  # check that the number of rows is the same
+  if(nrow(primary_meter) == nrow(ev_meter))
+  {
+    # EV = TRUE where meter value > 1 kwh based on raw analysis
+    primary_meter$EV = ev_meter$value >= 1.0
+    
+    # save the labeled data
+    output_file = sub(DIR_PATH, OUTPUT_PATH, primary_file)
+    write_csv(primary_meter, output_file)
+    
+    # return value
+    TRUE
+  } else { # return value
+    FALSE
+  }
+  
+}
+
+non_ev_data = function(primary_file){
+  # open the primary file and add the EV = FALSE label
+  primary_meter = read_csv(primary_file)
+  
+  primary_meter$EV = FALSE
+  
+  # save the labeled data
+  output_file = sub(DIR_PATH, OUTPUT_PATH, primary_file)
+  write_csv(primary_meter, output_file)
+  
+  # return value
+  TRUE
+}
+
+if(MERGE_EV)
+{
+  # merge EV data
+  combined_files = lapply(primary_metering, combine_ev_data)
+} else {
+  # add non-ev label
+  combined_files = lapply(primary_metering, non_ev_data)
+}
+
+```
+
+```{r}
+# print the result - FALSE means a failure
+combined_files
+```

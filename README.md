@@ -14,6 +14,7 @@ The contents of this repository contain the data and code necessary to recreate 
 A quick guide to the repository directory layout:
 
 * `raw_data` - this directory contains the raw data directly from the Meter Data Management System (MDMS).
+* `labeled_data` - directory containing raw data after labels have been applied to denote if a time period is associated with EV charging
 * `Raw Data Analysis.rmd` - R file to examine association between raw primary meter and EV meter data. 
 
 ## Contributing
