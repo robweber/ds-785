@@ -21,7 +21,7 @@ Some notes on how data was gathered from the source system (Meter Data Managemen
 
 ## Initial Load
 
-Load the sample meters (primary and EV) and take a look at the usage curves.
+Load the sample meters (primary and EV) and take a look at the usage curves. Datasets will store a full year of values so get a single month to make viewing easier. 
 
 ```{r load}
 
@@ -36,16 +36,19 @@ evMeter$start = paste(evMeter$`start-date`, evMeter$`start-time`, sep=" ")
 primaryMeter$start = as.POSIXct(primaryMeter$start, format = "%m-%d-%Y %H:%M")
 evMeter$start = as.POSIXct(evMeter$start, format = "%m-%d-%Y %H:%M")
 
+primaryMeter[is.na(primaryMeter$value), ]
+evMeter[is.na(evMeter$value), ]
 ```
 
 ```{r}
 
-ggplot(data = primaryMeter, aes(x = start, y = value)) + geom_line()
+# view month of Sept 2026 - notice peaks
+ggplot(data = primaryMeter[primaryMeter$start >= as.POSIXct("2026-09-01 00:00:00", tz = "America/Chicago"), ], aes(x = start, y = value)) + geom_line(linewidth = 1)
 
 ```
 ```{r}
 
-ggplot(data = evMeter, aes(x = start, y = value)) + geom_line()
+ggplot(data = evMeter[evMeter$start >= as.POSIXct("2026-09-01 00:00:00", tz = "America/Chicago"), ], aes(x = start, y = value)) + geom_line(linewidth = 1)
 
 ```
 
@@ -71,13 +74,66 @@ singlePrimary = primaryMeter[primaryMeter$`start-date` == '09-02-2026', ]
 singleEV = evMeter[evMeter$`start-date` == '09-02-2026', ]
 
 ggplot() + 
-  geom_line(data = singlePrimary, aes(x = start, y = value), color = "blue") +
-  geom_line(data = singleEV, aes(x = start, y = value), color = "red")
+  geom_line(data = singlePrimary, aes(x = start, y = value, color = "Primary Meter"), linewidth = 1) +
+  geom_line(data = singleEV, aes(x = start, y = value, color = "EV Charging"), linewidth = 1) + 
+  labs(x = "Date", y = "Value", title="Primary and EV Charging") + 
+  scale_color_manual(
+    values = c("Primary Meter" = "blue", "EV Charging" = "red"),
+    name="Legend"
+  ) 
 ```
 
 ## EV Data
 
-Not a lot can be done until the EV and primary meter data is merged. Do this and then load in one of the combined files that includes EV labeling. 
+Not a lot can be done until the EV and primary meter data is merged. Do this using the `Label Data.rmd` file and then load in one of the combined files that includes EV labeling. 
+
+```{r}
+
+labeled_data = read_csv("labeled_data/ev/12479002_readings_10012025-09292026.primary.csv")
+
+# create date field
+labeled_data$start = paste(labeled_data$`start-date`, labeled_data$`start-time`, sep=" ")
+labeled_data$start = as.POSIXct(labeled_data$start, format = "%m-%d-%Y %H:%M")
+
+```
+
+```{r}
+# count how many EV charging values compared to the total
+total_charge_sessions = nrow(labeled_data[labeled_data$EV == TRUE, ])
+
+# percent of charging vs normal usage
+total_charge_sessions/nrow(labeled_data)
+```
+Note the small EV charging session missed in the data below compared to the true EV line above. Session was from 7-7:30am and only used .62 kWh total. Well under the label threshold. Not a true charging session, likely "pre-heating" the car. 
+
+```{r}
+singleLabel = labeled_data[labeled_data$`start-date` == '09-02-2026', ]
+
+ggplot(singleLabel, aes(x = start, y = value, color = EV, group = 1)) +
+  geom_line(linewidth = 1) +
+  scale_color_manual(
+    values = c(`TRUE` = "red", `FALSE` = "blue"),
+    labels = c(`TRUE` = "Yes", `FALSE` = "No"),
+    name = "Charging Indicated"
+  ) +
+  labs(x = "Date", y = "Value", title="Primary Meter w/ EV Charging Flagged")
+```
 
 * how many intervals are EV vs non-EV
 * break this down by 
+
+```{r}
+
+files <- list.files(path = "labeled_data/ev/", pattern = "\\.csv$", full.names = TRUE)
+
+df <- read_csv(files, id = "source_file")
+
+```
+
+```{r}
+# count how many EV charging values compared to the total
+total_charge_sessions = nrow(df[df$EV == TRUE, ])
+
+# percent of charging vs normal usage
+total_charge_sessions/nrow(df)
+```
