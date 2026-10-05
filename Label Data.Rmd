@@ -49,6 +49,9 @@ primary_metering = list.files(path=DIR_PATH, pattern=".primary.csv$", full.names
 
 ```{r}
 
+# 4 intervals per hour, 24 hrs * 365 days. -3 for FALL DST
+TOTAL_INTERVALS = (4 * 24 * 365) - 3 
+
 combine_ev_data = function(primary_file) {
   # every primary file should also have an ev meter file
   ev_file = sub(".primary.csv$", ".ev.csv", primary_file)
@@ -60,8 +63,8 @@ combine_ev_data = function(primary_file) {
   primary_meter = primary_meter[!duplicated(primary_meter[c("start_full", "end_full")]), ]
   ev_meter = ev_meter[!duplicated(ev_meter[c("start_full", "end_full")]), ]
   
-  # check that the number of rows is the same (sanity check)
-  if(nrow(primary_meter) == nrow(ev_meter))
+  # check that there are enough rows (sanity check)
+  if(nrow(primary_meter) == TOTAL_INTERVALS && nrow(primary_meter) == nrow(ev_meter))
   {
     # create EV true/false column based on 1 kWh value
     ev_meter$EV = ev_meter$value >= 1.0
@@ -79,7 +82,7 @@ combine_ev_data = function(primary_file) {
     {
       # save the labeled data
       output_file = sub(DIR_PATH, OUTPUT_PATH, primary_file)
-      write_csv(output_df, output_file)
+      #write_csv(output_df, output_file)
     }
     else
     {
@@ -99,14 +102,27 @@ non_ev_data = function(primary_file){
   # open the primary file and add the EV = FALSE label
   primary_meter = read_csv(primary_file)
   
-  primary_meter$EV = FALSE
+  # drop duplicate timestamps (should only be DST in FALL)
+  primary_meter = primary_meter[!duplicated(primary_meter[c("start_full", "end_full")]), ]
   
-  # save the labeled data
-  output_file = sub(DIR_PATH, OUTPUT_PATH, primary_file)
-  write_csv(primary_meter, output_file)
-  
-  # return value
-  TRUE
+  # make sure all the intervals exist and no NA values
+  if(nrow(primary_meter) == TOTAL_INTERVALS && sum(is.na(primary_meter$value)) == 0)
+  {
+    # set EV value to FALSE
+    primary_meter$EV = FALSE
+    
+    # save the labeled data
+    output_file = sub(DIR_PATH, OUTPUT_PATH, primary_file)
+    write_csv(primary_meter, output_file)
+    
+    # return value
+    TRUE
+  }
+  else
+  {
+    warning("Row count mistmatch ", primary_file)
+    FALSE
+  }
 }
 
 if(MERGE_EV)
