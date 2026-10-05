@@ -4,6 +4,13 @@ output: html_document
 date: "2026-09-18"
 ---
 
+## Install
+
+The following packages must be installed
+
+* readr
+* ggplot2
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(readr)
@@ -25,16 +32,12 @@ Load the sample meters (primary and EV) and take a look at the usage curves. Dat
 
 ```{r load}
 
-primaryMeter = read_csv("raw_data/ev/12479002_readings_10012025-09292026.primary.csv")
-evMeter = read_csv("raw_data/ev/12479002_readings_10012025-09292026.ev.csv")
-
-# combine start date and start times
-primaryMeter$start = paste(primaryMeter$`start-date`, primaryMeter$`start-time`, sep=" ")
-evMeter$start = paste(evMeter$`start-date`, evMeter$`start-time`, sep=" ")
+primaryMeter = read_csv("raw_data/ev/12479002_readings_10012025-10012026.primary.csv")
+evMeter = read_csv("raw_data/ev/12479002_readings_10012025-10012026.ev.csv")
 
 # treat as date - thanks Claude
-primaryMeter$start = as.POSIXct(primaryMeter$start, format = "%m-%d-%Y %H:%M")
-evMeter$start = as.POSIXct(evMeter$start, format = "%m-%d-%Y %H:%M")
+primaryMeter$start_full = as.POSIXct(primaryMeter$start_full, format = "%m-%d-%Y %H:%M")
+evMeter$start_full = as.POSIXct(evMeter$start_full, format = "%m-%d-%Y %H:%M")
 
 primaryMeter[is.na(primaryMeter$value), ]
 evMeter[is.na(evMeter$value), ]
@@ -43,12 +46,12 @@ evMeter[is.na(evMeter$value), ]
 ```{r}
 
 # view month of Sept 2026 - notice peaks
-ggplot(data = primaryMeter[primaryMeter$start >= as.POSIXct("2026-09-01 00:00:00", tz = "America/Chicago"), ], aes(x = start, y = value)) + geom_line(linewidth = 1)
+ggplot(data = primaryMeter[primaryMeter$start_full >= as.POSIXct("2026-09-01 00:00:00", tz = "America/Chicago"), ], aes(x = start_full, y = value)) + geom_line(linewidth = 1)
 
 ```
 ```{r}
 
-ggplot(data = evMeter[evMeter$start >= as.POSIXct("2026-09-01 00:00:00", tz = "America/Chicago"), ], aes(x = start, y = value)) + geom_line(linewidth = 1)
+ggplot(data = evMeter[evMeter$start_full >= as.POSIXct("2026-09-01 00:00:00", tz = "America/Chicago"), ], aes(x = start_full, y = value)) + geom_line(linewidth = 1)
 
 ```
 
@@ -70,12 +73,12 @@ The lowest amount of demand (kW) on a level 2 EV charger is 7.68 kW - that is a 
 
 ```{r}
 
-singlePrimary = primaryMeter[primaryMeter$`start-date` == '09-02-2026', ]
-singleEV = evMeter[evMeter$`start-date` == '09-02-2026', ]
+singlePrimary = primaryMeter[primaryMeter$start_date == '09-02-2026', ]
+singleEV = evMeter[evMeter$start_date == '09-02-2026', ]
 
 ggplot() + 
-  geom_line(data = singlePrimary, aes(x = start, y = value, color = "Primary Meter"), linewidth = 1) +
-  geom_line(data = singleEV, aes(x = start, y = value, color = "EV Charging"), linewidth = 1) + 
+  geom_line(data = singlePrimary, aes(x = start_full, y = value, color = "Primary Meter"), linewidth = 1) +
+  geom_line(data = singleEV, aes(x = start_full, y = value, color = "EV Charging"), linewidth = 1) + 
   labs(x = "Date", y = "Value", title="Primary and EV Charging") + 
   scale_color_manual(
     values = c("Primary Meter" = "blue", "EV Charging" = "red"),
@@ -89,11 +92,10 @@ Not a lot can be done until the EV and primary meter data is merged. Do this usi
 
 ```{r}
 
-labeled_data = read_csv("labeled_data/ev/12479002_readings_10012025-09292026.primary.csv")
+labeled_data = read_csv("labeled_data/ev/12479002_readings_10012025-10012026.primary.csv")
 
 # create date field
-labeled_data$start = paste(labeled_data$`start-date`, labeled_data$`start-time`, sep=" ")
-labeled_data$start = as.POSIXct(labeled_data$start, format = "%m-%d-%Y %H:%M")
+labeled_data$start_full = as.POSIXct(labeled_data$start_full, format = "%m-%d-%Y %H:%M")
 
 ```
 
@@ -107,9 +109,9 @@ total_charge_sessions/nrow(labeled_data)
 Note the small EV charging session missed in the data below compared to the true EV line above. Session was from 7-7:30am and only used .62 kWh total. Well under the label threshold. Not a true charging session, likely "pre-heating" the car. 
 
 ```{r}
-singleLabel = labeled_data[labeled_data$`start-date` == '09-02-2026', ]
+singleLabel = labeled_data[labeled_data$start_date == '09-02-2026', ]
 
-ggplot(singleLabel, aes(x = start, y = value, color = EV, group = 1)) +
+ggplot(singleLabel, aes(x = start_full, y = value, color = EV, group = 1)) +
   geom_line(linewidth = 1) +
   scale_color_manual(
     values = c(`TRUE` = "red", `FALSE` = "blue"),
