@@ -66,8 +66,8 @@ combine_ev_data = function(primary_file) {
   # check that there are enough rows (sanity check)
   if(nrow(primary_meter) == TOTAL_INTERVALS && nrow(primary_meter) == nrow(ev_meter))
   {
-    # create EV true/false column based on 1 kWh value
-    ev_meter$EV = ev_meter$value >= 1.0
+    # create EV true/false column based on 0.68 kWh value (refere to Raw Analysis)
+    ev_meter$EV = ev_meter$value >= 0.68
     
     # create DF of ev labels for join
     join_df = ev_meter[c("start_full", "end_full", "EV")]
@@ -82,7 +82,7 @@ combine_ev_data = function(primary_file) {
     {
       # save the labeled data
       output_file = sub(DIR_PATH, OUTPUT_PATH, primary_file)
-      #write_csv(output_df, output_file)
+      write_csv(output_df, output_file)
     }
     else
     {
