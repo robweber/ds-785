@@ -63,7 +63,7 @@ Get a single day's usage to look at a smaller amount of time. Note how the EV me
 
 ```{r}
 
-quarterHour = 7.68/4
+quarterHour = ((40*.8 * 240)/1000)/4
 fiveMinute = quarterHour/3
 
 ```
@@ -121,21 +121,66 @@ ggplot(singleLabel, aes(x = start_full, y = value, color = EV, group = 1)) +
   labs(x = "Date", y = "Value", title="Primary Meter w/ EV Charging Flagged")
 ```
 
-* how many intervals are EV vs non-EV
-* break this down by 
+## Full Dataset
 
 ```{r}
 
-files <- list.files(path = "labeled_data/ev/", pattern = "\\.csv$", full.names = TRUE)
+# read in all files as one data set
+files <- list.files(path = "labeled_data/", pattern = "\\.csv$", full.names = TRUE, recursive=TRUE)
 
-df <- read_csv(files, id = "source_file")
+fullDF <- read_csv(files, id = "source_file")
+
+# print # of unique meters, shoudl be 100
+length(unique(fullDF$meter_num))
+
+# num rows matches expected intervals for 100 meters
+nrow(fullDF) == 100*((365*24*4)-3)
 
 ```
 
+Check min/max and NA values
+
+Notes:
+
+* No values below 0 (good)
+* start times between 00:00 and 23:45 (good)
+* Max = 32, that is odd on a residential account
+
+```{r}
+
+summary(fullDF)
+
+
+```
+4 rather large values on the same meter. Further investigation shows these are estimated after a period of connectivity loss on this device. This is common to make intervals sum to the total of the start/end readings. Removing these outliers prior to model training is best. 
+
+```{r}
+
+# max demand on a 200 amp service 240 Volts * 200 amps / 1000 = 48 kW
+cutOff = ((240*200)/1000) * .25
+
+ggplot(fullDF, aes(x = value)) + 
+  geom_boxplot() +
+  labs(title = "kWh with Outliers", x = "kWh")
+
+# find large values
+largeValues = fullDF[fullDF$value >= cutOff, ]
+
+# trim based on cutoff and re-plot
+trimmedFullDF = fullDF[fullDF$value < cutOff, ]
+
+ggplot(trimmedFullDF, aes(x = value)) + 
+  geom_boxplot() +
+  labs(title = "kWh without outliers", x = "kWh")
+
+```
+
+Class imbalance of EV=TRUE vs FALSE. EV charging makes up about 2.5% of the total data. XGBoost should be able to work with this as long as training/test/validation datasets keep the same ratio between them. 
+
 ```{r}
 # count how many EV charging values compared to the total
-total_charge_sessions = nrow(df[df$EV == TRUE, ])
+total_charge_sessions = nrow(fullDF[fullDF$EV == TRUE, ])
 
 # percent of charging vs normal usage
-total_charge_sessions/nrow(df)
+total_charge_sessions/nrow(fullDF)
 ```
