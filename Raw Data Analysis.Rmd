@@ -175,7 +175,7 @@ ggplot(trimmedFullDF, aes(x = value)) +
 
 ```
 
-Class imbalance of EV=TRUE vs FALSE. EV charging makes up about 2.5% of the total data. XGBoost should be able to work with this as long as training/test/validation datasets keep the same ratio between them. 
+Class imbalance of EV=TRUE vs FALSE. EV charging makes up about 2.7% of the total data. XGBoost should be able to work with this as long as training/test/validation datasets keep the same ratio between them. 
 
 ```{r}
 # count how many EV charging values compared to the total
