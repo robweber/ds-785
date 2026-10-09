@@ -37,6 +37,8 @@ if(MERGE_EV)
   OUTPUT_PATH = "labeled_data/non-ev/"
 }
 
+WEATHER_DATA = "raw_data/weather_15_min.csv"
+
 ```
 
 ```{r}
@@ -52,6 +54,10 @@ primary_metering = list.files(path=DIR_PATH, pattern=".primary.csv$", full.names
 # 4 intervals per hour, 24 hrs * 365 days. -3 for FALL DST
 TOTAL_INTERVALS = (4 * 24 * 365) - 3 
 
+# load weather data and rename column (https://dplyr.tidyverse.org/reference/rename.html)
+weather_df = read_csv(WEATHER_DATA)
+weather_df = weather_df %>% rename(start_full = datetime)
+
 combine_ev_data = function(primary_file) {
   # every primary file should also have an ev meter file
   ev_file = sub(".primary.csv$", ".ev.csv", primary_file)
@@ -66,16 +72,23 @@ combine_ev_data = function(primary_file) {
   # check that there are enough rows (sanity check)
   if(nrow(primary_meter) == TOTAL_INTERVALS && nrow(primary_meter) == nrow(ev_meter))
   {
-    # create EV true/false column based on 0.68 kWh value (refere to Raw Analysis)
-    ev_meter$EV = ev_meter$value >= 0.68
+    # create EV true/false column based on 0.64 kWh value (refer to Raw Analysis)
+    ev_meter$EV = ev_meter$value >= 0.64
     
     # create DF of ev labels for join
     join_df = ev_meter[c("start_full", "end_full", "EV")]
-    
+  
     # join with primary meter on timestamps
     # https://dplyr.tidyverse.org/reference/mutate-joins.html
     output_df = primary_meter %>%
         left_join(join_df, by = c("start_full", "end_full"))
+    
+    # make sure dates are datetime values
+    output_df$start_full = as.POSIXct(output_df$start_full, format = "%m-%d-%Y %H:%M")
+    
+    #join weather data on timestamps
+    output_df = output_df %>%
+        left_join(weather_df, by=("start_full"))
     
     # only save if join was successful
     if(sum(is.na(output_df$EV)) == 0)
@@ -111,9 +124,16 @@ non_ev_data = function(primary_file){
     # set EV value to FALSE
     primary_meter$EV = FALSE
     
+    # make sure dates are datetime values
+    primary_meter$start_full = as.POSIXct(primary_meter$start_full, format = "%m-%d-%Y %H:%M")
+    
+    #join weather data on timestamps
+    output_df = primary_meter %>%
+        left_join(weather_df, by=("start_full"))
+    
     # save the labeled data
     output_file = sub(DIR_PATH, OUTPUT_PATH, primary_file)
-    write_csv(primary_meter, output_file)
+    write_csv(output_df, output_file)
     
     # return value
     TRUE

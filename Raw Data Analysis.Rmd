@@ -18,15 +18,16 @@ library(ggplot2)
 
 ```
 
-## Data Gathering
+## Data Gathering Notes
 
 Some notes on how data was gathered from the source system (Meter Data Management). 
 
 * only EV accounts with a full year of usage used (connect date prior to Oct 1 2025)
 * full year worth of usage data
 * standalone homes (no apts)
+* weather data from same system used to generate billing data (original source: National Weather Service)
 
-## Initial Load
+## Raw Meter Data
 
 Load the sample meters (primary and EV) and take a look at the usage curves. Datasets will store a full year of values so get a single month to make viewing easier. 
 
@@ -41,6 +42,7 @@ evMeter$start_full = as.POSIXct(evMeter$start_full, format = "%m-%d-%Y %H:%M")
 
 primaryMeter[is.na(primaryMeter$value), ]
 evMeter[is.na(evMeter$value), ]
+
 ```
 
 ```{r}
@@ -51,15 +53,13 @@ ggplot(data = primaryMeter[primaryMeter$start_full >= as.POSIXct("2026-09-01 00:
 ```
 ```{r}
 
+# EV charging, same month
 ggplot(data = evMeter[evMeter$start_full >= as.POSIXct("2026-09-01 00:00:00", tz = "America/Chicago"), ], aes(x = start_full, y = value)) + geom_line(linewidth = 1)
 
 ```
 
-## One Day
 
-Get a single day's usage to look at a smaller amount of time. Note how the EV meter is 0 most of the time but then shows usage corresponding with when the primary meter also has an uptick. 
-
-### EV demand
+### Min EV demand
 
 ```{r}
 
@@ -70,6 +70,9 @@ fiveMinute = quarterHour/3
 
 The lowest amount of demand (kW) on a level 2 EV charger is 7.68 kW - that is a 40 amp charger. In a 15 minute interval the total kWh would be: `quarterHour`. Assuming the charger was not on for the whole 15 minutes a 5 minute increment would be: `fiveMinute`. Safe to assume any usage over 1kWh the EV charger is on, while less than that it's in "idle" state. Idle may use some small amount of power. 
 
+### One Day
+
+Get a single day's usage to look at a smaller amount of time. Note how the EV meter is 0 most of the time but then shows usage corresponding with when the primary meter also has an uptick. 
 
 ```{r}
 
@@ -86,7 +89,27 @@ ggplot() +
   ) 
 ```
 
-## EV Data
+## Raw Weather Data
+
+Weather data doesn't contain any missed values and min/max for temp are in line with expectations for region. 
+
+```{r}
+
+weather = read_csv("raw_data/weather_15_min.csv")
+
+summary(weather)
+
+# check for missing values
+sum(is.na(weather$dew_point))
+sum(is.na(weather$temperature))
+
+# graph
+
+ggplot(data = weather, aes(x = datetime, y = temperature)) + geom_line(linewidth = 1)
+
+```
+
+## Labeled EV Data
 
 Not a lot can be done until the EV and primary meter data is merged. Do this using the `Label Data.rmd` file and then load in one of the combined files that includes EV labeling. 
 
@@ -103,7 +126,7 @@ labeled_data$start_full = as.POSIXct(labeled_data$start_full, format = "%m-%d-%Y
 # count how many EV charging values compared to the total
 total_charge_sessions = nrow(labeled_data[labeled_data$EV == TRUE, ])
 
-# percent of charging vs normal usage
+# percent of charging vs normal usage - this is for one meter only!
 total_charge_sessions/nrow(labeled_data)
 ```
 Note the small EV charging session missed in the data below compared to the true EV line above. Session was from 7-7:30am and only used .62 kWh total. Well under the label threshold. Not a true charging session, likely "pre-heating" the car. 
@@ -119,6 +142,35 @@ ggplot(singleLabel, aes(x = start_full, y = value, color = EV, group = 1)) +
     name = "Charging Indicated"
   ) +
   labs(x = "Date", y = "Value", title="Primary Meter w/ EV Charging Flagged")
+```
+### Overlay Weather Data
+
+Mapping weather data to a single week of usage.Note the smaller spike in usage corresponding to evening AC usage on high temp days. Large spikes (EV charging) do not follow this trend. They actually occur at the lowest temp values of the day. 
+
+```{r}
+
+labeled_data$start_date = as.Date(labeled_data$start_date, "%m-%d-%Y")
+
+weekEvLabel = labeled_data[labeled_data$start_date >= '2026-07-12' & labeled_data$start_date < "2026-07-18", ]
+
+# info for creating chart taken from: https://r-graph-gallery.com/line-chart-dual-Y-axis-ggplot2.html
+# graph usage data with weather for the month
+coeff <- 25
+
+ggplot(weekEvLabel, aes(x=start_full)) +
+  geom_line( aes(y=value, color='kWh'), linewidth=1) + 
+  geom_line( aes(y=temperature/coeff, color='temp'), linewidth=1) + # divide by coeff to scale
+  scale_y_continuous(
+    name = "kWh",
+    # Add a second axis and specify its features
+    sec.axis = sec_axis(~.*coeff, name="temp")
+  ) +
+  scale_color_manual(
+    values = c("kWh" = "black", "temp" = "blue"),
+    name="Legend"
+  ) + 
+  labs(x='Date', title='EV Charging vs Weather')
+
 ```
 
 ## Full Dataset
@@ -152,7 +204,7 @@ summary(fullDF)
 
 
 ```
-4 rather large values on the same meter. Further investigation shows these are estimated after a period of connectivity loss on this device. This is common to make intervals sum to the total of the start/end readings. Removing these outliers prior to model training is best. 
+4 rather large values on the same meter. Further investigation shows these are estimated after a period of connectivity loss on this device. This is common to make intervals sum to the total of the start/end readings. The value is certainly not correct, some type of fix prior to training will be needed (NA or imputing new value?).
 
 ```{r}
 
