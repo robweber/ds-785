@@ -129,6 +129,32 @@ total_charge_sessions = nrow(labeled_data[labeled_data$EV == TRUE, ])
 # percent of charging vs normal usage - this is for one meter only!
 total_charge_sessions/nrow(labeled_data)
 ```
+```{r}
+
+# function to plot EV usage and overlay weather
+# info for creating chart taken from: https://r-graph-gallery.com/line-chart-dual-Y-axis-ggplot2.html
+plotWithWeather = function(df){
+
+# graph usage data with weather for the month
+coeff <- 25
+
+ggplot(df, aes(x=start_full)) +
+  geom_line( aes(y=value, color='kWh'), linewidth=1) + 
+  geom_line( aes(y=temperature/coeff, color='temp'), linewidth=1) + # divide by coeff to scale
+  scale_y_continuous(
+    name = "kWh",
+    # Add a second axis and specify its features
+    sec.axis = sec_axis(~.*coeff, name="temp")
+  ) +
+  scale_color_manual(
+    values = c("kWh" = "black", "temp" = "blue"),
+    name="Legend"
+  ) + 
+  labs(x='Date', title='EV Charging with Weather')
+}
+
+```
+
 Note the small EV charging session missed in the data below compared to the true EV line above. Session was from 7-7:30am and only used .62 kWh total. Well under the label threshold. Not a true charging session, likely "pre-heating" the car. 
 
 ```{r}
@@ -142,10 +168,18 @@ ggplot(singleLabel, aes(x = start_full, y = value, color = EV, group = 1)) +
     name = "Charging Indicated"
   ) +
   labs(x = "Date", y = "Value", title="Primary Meter w/ EV Charging Flagged")
+
 ```
 ### Overlay Weather Data
 
-Mapping weather data to a single week of usage.Note the smaller spike in usage corresponding to evening AC usage on high temp days. Large spikes (EV charging) do not follow this trend. They actually occur at the lowest temp values of the day. 
+Example using single day above
+
+```{r}
+plotWithWeather(singleLabel)
+
+```
+
+Mapping weather data to a single week of usage in summer. Note the smaller spike in usage corresponding to evening AC usage on high temp days. Large spikes (EV charging) do not follow this trend. They actually occur at the lowest temp values of the day. 
 
 ```{r}
 
@@ -153,24 +187,7 @@ labeled_data$start_date = as.Date(labeled_data$start_date, "%m-%d-%Y")
 
 weekEvLabel = labeled_data[labeled_data$start_date >= '2026-07-12' & labeled_data$start_date < "2026-07-18", ]
 
-# info for creating chart taken from: https://r-graph-gallery.com/line-chart-dual-Y-axis-ggplot2.html
-# graph usage data with weather for the month
-coeff <- 25
-
-ggplot(weekEvLabel, aes(x=start_full)) +
-  geom_line( aes(y=value, color='kWh'), linewidth=1) + 
-  geom_line( aes(y=temperature/coeff, color='temp'), linewidth=1) + # divide by coeff to scale
-  scale_y_continuous(
-    name = "kWh",
-    # Add a second axis and specify its features
-    sec.axis = sec_axis(~.*coeff, name="temp")
-  ) +
-  scale_color_manual(
-    values = c("kWh" = "black", "temp" = "blue"),
-    name="Legend"
-  ) + 
-  labs(x='Date', title='EV Charging vs Weather')
-
+plotWithWeather(weekEvLabel)
 ```
 
 ## Full Dataset
