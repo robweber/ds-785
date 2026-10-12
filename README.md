@@ -5,6 +5,28 @@ This repository contains the data sets and code for my DS 785 Capstone project.
 
 ## Install 
 
+Running any code requires a working Python install (Python 3.12 or greater) as well as a working R environment (R 4.5.1 or greater). Details on what each code file does can be found in the [Usage](#usage) section or a brief summary of each in the [Directory Layout](#directory-layout) section.
+
+### Python Requirements
+
+Any libraries required for the Python files should be installed via the `python/requirements.txt` file prior to running anything. It is recommended to run these in a Python virtual environment. While this may differ depending on platform an example of setting up a virtual environment via the command line is: 
+
+```
+
+# create the virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# this will build libraries for any supported displays (see omni-epd for more info)
+pip3 install setuptools -U
+pip3 install -r python/requirements.txt
+
+```
+
+### R Requirements
+
+Each R file has several imports for various libraries at the top of the file. Each should be installed via the `install.packages` command. 
+
 ## Usage
 
 The contents of this repository contain the data and code necessary to recreate the EV detection model for the capstone project. Scripts for analysis, ETL, and model building are written in either R or Python. They should be run in a specific order on the raw data files to re-create the model. 
