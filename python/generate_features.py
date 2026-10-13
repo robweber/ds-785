@@ -18,6 +18,12 @@ import pandas as pd
 
 MAX_INTERVAL_THRESHOLD = 12  # 12 kWh is max 200 amp meter could use in 15 min
 
+def is_data_valid(df):
+    """ basic checks on the data to ensure correct number of intervals and values """
+
+    # check for NA values - R code should have already verified other attributes
+    return df['value'].isna().sum() == 0
+
 def clean_outliers(df):
     """ replaces outliers with reasonable estimates based on previous intervals """
 
@@ -28,7 +34,7 @@ def clean_outliers(df):
     no_outliers = df['value'].mask(outliers)
 
     # interpolate NA values based on surrounding values - https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.interpolate.html#pandas.DataFrame.interpolate
-    df["kwh_imputed"] = no_outliers.interpolate(method="linear", limit_area="inside")
+    df["value"] = no_outliers.interpolate(method="linear", limit_area="inside")
 
     if(outliers.sum() > 0):
         print(f"\t{outliers.sum()} outliers found")
@@ -42,7 +48,7 @@ def generate_features(df):
     df['previous_value'] = df['value'].shift(1)
 
     # avg usage previous hour (4 intervals)
-    df['previous_hour_mean'] = df['value'].rolling(window=4).mean().shift(1)
+    df['previous_hour_mean'] = df['value'].shift(1).rolling(window=4).mean()
 
     return df
 
@@ -61,19 +67,22 @@ def main():
     # recursively walk the diretory
     for root, dirs, files in os.walk(args.input):
         for f in files:
-            # for each file, generate the features
-            print(f"Generating features for {f}")
-
             # read in the file as a dataframe
             df = pd.read_csv(f"{root}/{f}")
 
-            # fix an outlier data - generally these are from MDM fixes
-            df = clean_outliers(df)
+            if(is_data_valid(df)):
+                # for each file, generate the features
+                print(f"Generating features for {f}")
 
-            #df = generate_features(df)
+                # fix an outlier data - generally these are from MDM fixes
+                df = clean_outliers(df)
 
-            # save the new dataframe in the output folder
-            df.to_csv(f"{args.output}/{f}", index=False)
+                df = generate_features(df)
+
+                # save the new dataframe in the output folder
+                df.to_csv(f"{args.output}/{f}", index=False)
+            else:
+                print(f"ERROR: Cannot generate features for {f}")
 
 if __name__ == '__main__':
     main()
