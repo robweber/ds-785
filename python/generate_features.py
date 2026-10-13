@@ -16,9 +16,27 @@ import argparse
 import os
 import pandas as pd
 
-def generate_features(file):
-    # open the file
-    df = pd.read_csv(file)
+MAX_INTERVAL_THRESHOLD = 12  # 12 kWh is max 200 amp meter could use in 15 min
+
+def clean_outliers(df):
+    """ replaces outliers with reasonable estimates based on previous intervals """
+
+    # get all columns over threshold
+    outliers = df['value'] > MAX_INTERVAL_THRESHOLD
+
+    # replace outliers with NA https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.mask.html
+    no_outliers = df['value'].mask(outliers)
+
+    # interpolate NA values based on surrounding values - https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.interpolate.html#pandas.DataFrame.interpolate
+    df["kwh_imputed"] = no_outliers.interpolate(method="linear", limit_area="inside")
+
+    if(outliers.sum() > 0):
+        print(f"\t{outliers.sum()} outliers found")
+
+    return df
+
+
+def generate_features(df):
 
     # previous interval
     df['previous_value'] = df['value'].shift(1)
@@ -45,7 +63,14 @@ def main():
         for f in files:
             # for each file, generate the features
             print(f"Generating features for {f}")
-            df = generate_features(f"{root}/{f}")
+
+            # read in the file as a dataframe
+            df = pd.read_csv(f"{root}/{f}")
+
+            # fix an outlier data - generally these are from MDM fixes
+            df = clean_outliers(df)
+
+            #df = generate_features(df)
 
             # save the new dataframe in the output folder
             df.to_csv(f"{args.output}/{f}", index=False)
