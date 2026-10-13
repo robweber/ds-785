@@ -44,11 +44,18 @@ def clean_outliers(df):
 
 def generate_features(df):
 
-    # previous interval
+    # VALUE features
+    # previous interval stats
     df['previous_value'] = df['value'].shift(1)
+    df['previous_delta'] = df['value'] - df['value'].shift(1)
 
-    # avg usage previous hour (4 intervals)
+    # previous averages
     df['previous_hour_mean'] = df['value'].shift(1).rolling(window=4).mean()
+    df['previous_day_mean'] = df['value'].shift(1).rolling(window=96).mean()
+
+    # previous std
+    df['previous_hour_std'] = df['value'].shift(1).rolling(window=4).std()
+    df['previous_day_std'] = df['value'].shift(1).rolling(window=96).std()
 
     return df
 
