@@ -52,31 +52,33 @@ def generate_features(df):
 
     # previous interval stats
     df['previous_value'] = df['value'].shift(1)
-    df['previous_delta'] = df['value'] - df['value'].shift(1)
-    df['baseline_delta'] = df['value'] - df['30_day_kwh_baseline']
+    df['previous_value_delta'] = df['value'] - df['value'].shift(1)
+    df['baseline_value_delta'] = df['value'] - df['30_day_kwh_baseline']
 
     # previous averages
-    df['previous_hour_mean'] = df['value'].shift(1).rolling(window=HOUR_INTERVAL).mean()
-    df['previous_day_mean'] = df['value'].shift(1).rolling(window=DAILY_INTERVAL).mean()
+    df['previous_hour_value_mean'] = df['value'].shift(1).rolling(window=HOUR_INTERVAL).mean()
+    df['previous_day_value_mean'] = df['value'].shift(1).rolling(window=DAILY_INTERVAL).mean()
 
     # previous std
-    df['previous_hour_std'] = df['value'].shift(1).rolling(window=HOUR_INTERVAL).std()
-    df['previous_day_std'] = df['value'].shift(1).rolling(window=DAILY_INTERVAL).std()
+    df['previous_hour_value_std'] = df['value'].shift(1).rolling(window=HOUR_INTERVAL).std()
+    df['previous_day_value_std'] = df['value'].shift(1).rolling(window=DAILY_INTERVAL).std()
 
     # WEATHER features
     # change from mean of previous 4 values - indication of climbing or falling
-    df['temperature_delta'] = df['temperature'] - df['temperature'].shift(1).rolling(window=HOUR_INTERVAL).mean()
+    df['previous_hour_temperature_delta'] = df['temperature'] - df['temperature'].shift(1).rolling(window=HOUR_INTERVAL).mean()
 
     # rolling averages to establish baseline temp
-    df['daily_temp_mean'] = df['temperature'].rolling(window=DAILY_INTERVAL, center=True, min_periods=1).mean()
-    df['weekly_temp_mean'] = df['temperature'].rolling(window=DAILY_INTERVAL * 7, center=True, min_periods=1).mean()
+    df['daily_temperature_mean'] = df['temperature'].rolling(window=DAILY_INTERVAL, center=True, min_periods=1).median()
+    df['weekly_temperature_mean'] = df['temperature'].rolling(window=DAILY_INTERVAL * 7, center=True, min_periods=1).median()
+
+    # add delta from weekly baseline
+    df['baseline_temperature_delta'] = df['temperature'] - df['weekly_temperature_mean']
 
     # TIME features - help from https://www.geeksforgeeks.org/pandas/get-month-from-date-in-pandas-python/
     start_dates = pd.to_datetime(df['start_date'])
     df['month'] = start_dates.dt.month
     df['day_of_week'] = start_dates.dt.weekday
     df['is_weekend'] = start_dates.dt.weekday >= 5  # 5 = Sat, 6 = Sun
-
 
     return df
 
