@@ -1,0 +1,75 @@
+---
+title: "EDA"
+author: "Rob Weber"
+date: "2026-10-18"
+output: html_document
+---
+
+## Install
+
+The following packages must be installed
+
+* readr
+* ggplot2
+* dplyr
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(ggplot2)
+library(dplyr)
+
+```
+
+## Pre-Features
+
+Examines some trends in the data prior to any additional feature creation. 
+
+```{r}
+
+set.seed(42)
+
+# read in all files as one data set
+files <- list.files(path = "labeled_data/", pattern = "\\.csv$", full.names = TRUE, recursive=TRUE)
+
+fullDF <- read_csv(files, id = "source_file")
+
+# print # of unique meters, shoudl be 100
+length(unique(fullDF$meter_num))
+
+# num rows matches expected intervals for 100 meters
+nrow(fullDF) == 100*((365*24*4)-3)
+
+# create month attribute for grouping
+fullDF$start_full = as.POSIXct(fullDF$start_full, format = "%m-%d-%Y %H:%M")
+fullDF$month = format(fullDF$start_full, "%m")
+
+```
+
+### Usage by Month
+
+Compare a single meter's yearly usage by month to the total of all accounts
+
+```{r}
+
+# grab a single random meter
+singleMeter = sample(unique(fullDF$meter_num), 1)
+meterDF = fullDF[fullDF$meter_num == singleMeter, ]
+
+# graph usage grouped by month - https://stackoverflow.com/questions/60377831/sum-of-variables-in-a-grouped-barplot-in-ggplot2
+aggDF = aggregate(value ~ month, data=meterDF, FUN='sum')
+
+aggDF %>% 
+  ggplot(aes(x = month, y = value))+
+  geom_bar(stat = "identity", position = "dodge")
+
+```
+
+```{r}
+# aggregate all accounts, generate same graph
+aggDF = aggregate(value ~ month, data=fullDF, FUN='sum')
+
+aggDF %>% 
+  ggplot(aes(x = month, y = value))+
+  geom_bar(stat = "identity", position = "dodge")
+```
