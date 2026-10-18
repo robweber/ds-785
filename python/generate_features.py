@@ -100,10 +100,10 @@ def main():
         print("Running in TEST MODE - only processing one file")
 
     # recursively walk the diretory
-    processed = False
+    keep_running = True
     for root, dirs, files in os.walk(args.input):
         for f in files:
-            if(args.test and not processed):
+            if(keep_running):
                 # read in the file as a dataframe
                 df = pd.read_csv(f"{root}/{f}")
 
@@ -118,7 +118,8 @@ def main():
 
                     # save the new dataframe in the output folder
                     df.to_csv(f"{args.output}/{f}", index=False)
-                    processed = True
+
+                    keep_running = not args.test  # FALSE if args.test is TRUE
                 else:
                     print(f"ERROR: Cannot generate features for {f}")
 
