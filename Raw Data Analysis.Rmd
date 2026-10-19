@@ -79,6 +79,10 @@ Get a single day's usage to look at a smaller amount of time. Note how the EV me
 singlePrimary = primaryMeter[primaryMeter$start_date == '09-02-2026', ]
 singleEV = evMeter[evMeter$start_date == '09-02-2026', ]
 
+ggplot(data = singleEV, aes(x = start_full, y = value)) + 
+  geom_line(linewidth = 1) + 
+  labs(x = "Date", y = "Value", title="EV Charging Only")
+
 ggplot() + 
   geom_line(data = singlePrimary, aes(x = start_full, y = value, color = "Primary Meter"), linewidth = 1) +
   geom_line(data = singleEV, aes(x = start_full, y = value, color = "EV Charging"), linewidth = 1) + 
