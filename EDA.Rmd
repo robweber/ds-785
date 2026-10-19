@@ -23,7 +23,7 @@ library(dplyr)
 
 ## Pre-Features
 
-Examines some trends in the data prior to any additional feature creation. 
+Examines some trends in the data prior to any additional feature creation. Note that for day of the week Sunday = 0 and Sat = 6.
 
 ```{r}
 
@@ -40,20 +40,24 @@ length(unique(fullDF$meter_num))
 # num rows matches expected intervals for 100 meters
 nrow(fullDF) == 100*((365*24*4)-3)
 
-# create month attribute for grouping
+# create month and day attribute for grouping
 fullDF$start_full = as.POSIXct(fullDF$start_full, format = "%m-%d-%Y %H:%M")
 fullDF$month = format(fullDF$start_full, "%m")
+fullDF$day = format(fullDF$start_full, "%w")
+
+# grab a single random meter
+singleMeter = sample(unique(fullDF$meter_num), 1)
 
 ```
 
 ### Usage by Month
 
-Compare a single meter's yearly usage by month to the total of all accounts
+Compare a single meter's yearly usage by month to the total of all accounts. Both a random single meter and an aggregate of all meters show a trend based on time of the year. Higher values in peak heating and cooling seasons, lower in "shoulder" months where heating/cooling not used as much. 
+
+Filtering by EV accounts this trend is less pronounced but does still exist. 
 
 ```{r}
 
-# grab a single random meter
-singleMeter = sample(unique(fullDF$meter_num), 1)
 meterDF = fullDF[fullDF$meter_num == singleMeter, ]
 
 # graph usage grouped by month - https://stackoverflow.com/questions/60377831/sum-of-variables-in-a-grouped-barplot-in-ggplot2
@@ -61,15 +65,38 @@ aggDF = aggregate(value ~ month, data=meterDF, FUN='sum')
 
 aggDF %>% 
   ggplot(aes(x = month, y = value))+
-  geom_bar(stat = "identity", position = "dodge")
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_col(fill = "steelblue") + 
+  labs(title="Single Meter Annual Usage By Month", x="kWh", y="Month")
 
 ```
 
 ```{r}
-# aggregate all accounts, generate same graph
+# aggregate all accounts, generate same graph, filter EV or non EV if needed
 aggDF = aggregate(value ~ month, data=fullDF, FUN='sum')
+#aggDF = aggregate(value ~ month, data=fullDF[fullDF$EV == TRUE, ], FUN='sum')
 
 aggDF %>% 
   ggplot(aes(x = month, y = value))+
-  geom_bar(stat = "identity", position = "dodge")
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_col(fill = "steelblue") + 
+  labs(title="All Meters Annual Usage By Month", x="kWh", y="Month")
+```
+
+### Usage By Day 
+
+Broken down by day usage is fairly flat over days of the week. A slight uptick on weekends but no clear trend.
+
+```{r}
+
+# aggregate all accounts, filter EV or non EV if needed
+aggDF = aggregate(value ~ day, data=fullDF, FUN='sum')
+#aggDF = aggregate(value ~ day, data=fullDF[fullDF$EV == FALSE, ], FUN='sum')
+
+aggDF %>% 
+  ggplot(aes(x = day, y = value))+
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_col(fill = "steelblue") + 
+  labs(title="All Meters Annual Usage By Day Of Week", x="kWh", y="Day Of Week")
+
 ```
