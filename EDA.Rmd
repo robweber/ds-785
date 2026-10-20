@@ -73,10 +73,10 @@ aggDF %>%
 
 ```{r}
 # aggregate all accounts, generate same graph, filter EV or non EV if needed
-aggDF = aggregate(value ~ month, data=fullDF, FUN='sum')
-#aggDF = aggregate(value ~ month, data=fullDF[fullDF$EV == TRUE, ], FUN='sum')
+aggMonth = aggregate(value ~ month, data=fullDF, FUN='sum')
+#aggMonth = aggregate(value ~ month, data=fullDF[fullDF$EV == TRUE, ], FUN='sum')
 
-aggDF %>% 
+aggMonth %>% 
   ggplot(aes(x = month, y = value))+
   geom_bar(stat = "identity", position = "dodge") +
   geom_col(fill = "steelblue") + 
@@ -98,5 +98,40 @@ aggDF %>%
   geom_bar(stat = "identity", position = "dodge") +
   geom_col(fill = "steelblue") + 
   labs(title="All Meters Annual Usage By Day Of Week", x="kWh", y="Day Of Week")
+
+```
+
+### Average weather
+
+This chart is a little harder to follow but kWh usage spikes in months with extreme values (cold or warm). 
+
+```{r}
+
+# average weather data and add in aggregated month kWh
+aggWeather = aggregate(temperature ~ month, data=fullDF, FUN='mean')
+aggWeather$value = aggMonth$value
+
+aggWeather %>% 
+  ggplot(aes(x = month, y = temperature))+
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_col(fill = "steelblue") + 
+  labs(title="All Meters Annual Usage By Day Of Week", x="kWh", y="Day Of Week")
+
+# graph usage data with weather for the month
+coeff <- 1500
+
+ggplot(aggWeather, aes(x=month)) +
+  geom_bar(aes(y=value, color='kWh'), stat="identity", position="dodge") + 
+  geom_line( aes(y=temperature*coeff, color='temp', group=1), linewidth=1) + # divide by coeff to scale
+  scale_y_continuous(
+    name = "kWh",
+    # Add a second axis and specify its features
+    sec.axis = sec_axis(~./coeff, name="temp")
+  ) +
+  scale_color_manual(
+    values = c("kWh" = "black", "temp" = "blue"),
+    name="Legend"
+  ) + 
+  labs(x='Date', title='kWh Usage With Weather')
 
 ```
