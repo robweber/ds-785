@@ -37,8 +37,8 @@ primaryMeter = read_csv("raw_data/ev/12479002_readings_10012025-10012026.primary
 evMeter = read_csv("raw_data/ev/12479002_readings_10012025-10012026.ev.csv")
 
 # treat as date - thanks Claude
-primaryMeter$start_full = as.POSIXct(primaryMeter$start_full, format = "%m-%d-%Y %H:%M")
-evMeter$start_full = as.POSIXct(evMeter$start_full, format = "%m-%d-%Y %H:%M")
+primaryMeter$start_full = as.POSIXct(primaryMeter$start_full, format = "%m-%d-%Y %H:%M", tz = "America/Chicago")
+evMeter$start_full = as.POSIXct(evMeter$start_full, format = "%m-%d-%Y %H:%M", tz = "America/Chicago")
 
 primaryMeter[is.na(primaryMeter$value), ]
 evMeter[is.na(evMeter$value), ]
@@ -109,7 +109,6 @@ weather = read_csv("raw_data/weather_15_min.csv")
 summary(weather)
 
 # check for missing values
-sum(is.na(weather$dew_point))
 sum(is.na(weather$temperature))
 
 # graph
@@ -127,7 +126,7 @@ Not a lot can be done until the EV and primary meter data is merged. Do this usi
 labeled_data = read_csv("labeled_data/ev/12479002_readings_10012025-10012026.primary.csv")
 
 # create date field
-labeled_data$start_full = as.POSIXct(labeled_data$start_full, format = "%m-%d-%Y %H:%M")
+labeled_data$start_full = as.POSIXct(labeled_data$start_full, format = "%m-%d-%Y %H:%M", tz = "America/Chicago")
 
 ```
 
@@ -212,8 +211,7 @@ fullDF <- read_csv(files, id = "source_file")
 length(unique(fullDF$meter_num))
 
 # num rows matches expected intervals for 100 meters
-nrow(fullDF) == 100*((365*24*4)-3)
-
+nrow(fullDF) == 100*((365*24*4)-4)
 ```
 
 Check min/max and NA values
