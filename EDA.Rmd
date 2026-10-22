@@ -41,7 +41,7 @@ length(unique(fullDF$meter_num))
 nrow(fullDF) == 100*((365*24*4)-3)
 
 # create month and day attribute for grouping
-fullDF$start_full = as.POSIXct(fullDF$start_full, format = "%m-%d-%Y %H:%M")
+fullDF$start_full = as.POSIXct(fullDF$start_full, format = "%m-%d-%Y %H:%M", tz = "America/Chicago")
 fullDF$month = format(fullDF$start_full, "%m")
 fullDF$day = format(fullDF$start_full, "%w")
 
@@ -126,5 +126,50 @@ aggWeather %>%
     guide = "none"
   ) +
   labs(title="All Meters Annual Usage By Month", x="kWh", y="Month")
+
+```
+
+## With Features
+
+The following cells can be run after loading the updated dataset that includes additional features for model inference. 
+
+```{r}
+
+set.seed(42)
+
+# read in all files as one data set
+files <- list.files(path = "model_data/", pattern = "\\.csv$", full.names = TRUE)
+
+fullDF <- read_csv(files, id = "source_file")
+
+# print # of unique meters, should be 100
+length(unique(fullDF$meter_num))
+
+# num rows matches expected intervals for 100 meters
+nrow(fullDF) == 100*((365*24*4)-4)
+
+# grab a single random meter
+singleMeter = sample(unique(fullDF$meter_num), 1)
+
+```
+
+
+46143 on 2/19/2026 to illustrate an ev charging curve 21:30-3:15am
+```{r}
+
+ev_start_time = as.POSIXct("02-19-2026 08:00", format = "%m-%d-%Y %H:%M", tz = "America/Chicago")
+ev_end_time = as.POSIXct("02-19-2026 12:00", format = "%m-%d-%Y %H:%M", tz = "America/Chicago")
+
+# get the date and filter off the times
+evMeter = fullDF[fullDF$meter_num == 46143 & fullDF$start_date == '02-19-2026', ]
+evMeter$start_full = as.POSIXct(evMeter$start_full, format = "%m-%d-%Y %H:%M", tz = "America/Chicago")
+
+evMeter = evMeter %>% filter(between(start_full, ev_start_time, ev_end_time))
+
+ggplot(data = evMeter, aes(x = start_full)) +
+  geom_line(aes(y = value, color = "kWh"), linewidth = 1) +
+  geom_line(aes(y = `previous_day_value_mean`, color = "30 day baseline"), linewidth = 1) +
+  scale_color_manual(values = c("kWh" = "tomato", "30 day baseline" = "blue")) +
+  labs(x = "Date", y = "kWh", title = "EV Charging Shape", color = NULL)
 
 ```
