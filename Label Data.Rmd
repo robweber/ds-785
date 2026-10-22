@@ -49,25 +49,46 @@ primary_metering = list.files(path=DIR_PATH, pattern=".primary.csv$", full.names
 
 ```
 
+
 ```{r}
 
-# 4 intervals per hour, 24 hrs * 365 days. -3 for FALL DST
-TOTAL_INTERVALS = (4 * 24 * 365) - 3 
+# 4 intervals per hour, 24 hrs * 365 days. -4 for FALL DST
+TOTAL_INTERVALS = (4 * 24 * 365) - 4
 
 # load weather data and rename column (https://dplyr.tidyverse.org/reference/rename.html)
-weather_df = read_csv(WEATHER_DATA)
+weather_df = read_csv(WEATHER_DATA, col_types = cols(.default = col_character()))
 weather_df = weather_df %>% rename(start_full = datetime)
+weather_df$start_full = as.POSIXct(weather_df$start_full, format = "%Y-%m-%d %H:%M", tz = "America/Chicago")
 
 combine_ev_data = function(primary_file) {
   # every primary file should also have an ev meter file
   ev_file = sub(".primary.csv$", ".ev.csv", primary_file)
   
-  primary_meter = read_csv(primary_file)
-  ev_meter = read_csv(ev_file)
+  primary_meter = read_csv(primary_file, col_types = cols(.default = col_character(),
+                                                          value = col_double(),
+                                                          `vee-value` = col_double()))
+  ev_meter = read_csv(ev_file, col_types = cols(.default = col_character(),
+                                                          value = col_double(),
+                                                          `vee-value` = col_double()))
   
   # drop duplicate timestamps (should only be DST in FALL)
   primary_meter = primary_meter[!duplicated(primary_meter[c("start_full", "end_full")]), ]
   ev_meter = ev_meter[!duplicated(ev_meter[c("start_full", "end_full")]), ]
+  
+  # remove the final DST date (1:45am->1am)
+  primary_meter <- primary_meter %>%
+  mutate(
+    start_dt = as.POSIXct(start_full, format = "%m-%d-%Y %H:%M", tz = "America/Chicago"),
+    end_dt   = as.POSIXct(end_full,   format = "%m-%d-%Y %H:%M", tz = "America/Chicago")
+  ) %>%
+  filter(end_dt > start_dt)
+  
+  ev_meter <- ev_meter %>%
+  mutate(
+    start_dt = as.POSIXct(start_full, format = "%m-%d-%Y %H:%M", tz = "America/Chicago"),
+    end_dt   = as.POSIXct(end_full,   format = "%m-%d-%Y %H:%M", tz = "America/Chicago")
+  ) %>%
+  filter(end_dt > start_dt)
   
   # check that there are enough rows (sanity check)
   if(nrow(primary_meter) == TOTAL_INTERVALS && nrow(primary_meter) == nrow(ev_meter))
@@ -84,7 +105,7 @@ combine_ev_data = function(primary_file) {
         left_join(join_df, by = c("start_full", "end_full"))
     
     # make sure dates are datetime values
-    output_df$start_full = as.POSIXct(output_df$start_full, format = "%m-%d-%Y %H:%M")
+    output_df$start_full = as.POSIXct(output_df$start_full, format = "%m-%d-%Y %H:%M", tz = "America/Chicago")
     
     #join weather data on timestamps
     output_df = output_df %>%
@@ -95,6 +116,11 @@ combine_ev_data = function(primary_file) {
     {
       # save the labeled data
       output_file = sub(DIR_PATH, OUTPUT_PATH, primary_file)
+      
+      # convert dates back to chars, drop other columns
+      output_df$start_full <- format(output_df$start_full, "%m-%d-%Y %H:%M")
+      output_df = output_df %>% select(-c("start_dt", "end_dt"))
+      
       write_csv(output_df, output_file)
     }
     else
@@ -113,10 +139,19 @@ combine_ev_data = function(primary_file) {
 
 non_ev_data = function(primary_file){
   # open the primary file and add the EV = FALSE label
-  primary_meter = read_csv(primary_file)
+  primary_meter = read_csv(primary_file, col_types = cols(.default = col_character(),
+                                                          value = col_double(),
+                                                          `vee-value` = col_double()))
   
   # drop duplicate timestamps (should only be DST in FALL)
   primary_meter = primary_meter[!duplicated(primary_meter[c("start_full", "end_full")]), ]
+  
+  primary_meter <- primary_meter %>%
+  mutate(
+    start_dt = as.POSIXct(start_full, format = "%m-%d-%Y %H:%M", tz = "America/Chicago"),
+    end_dt   = as.POSIXct(end_full,   format = "%m-%d-%Y %H:%M", tz = "America/Chicago")
+  ) %>%
+  filter(end_dt > start_dt)
   
   # make sure all the intervals exist and no NA values
   if(nrow(primary_meter) == TOTAL_INTERVALS && sum(is.na(primary_meter$value)) == 0)
@@ -125,11 +160,15 @@ non_ev_data = function(primary_file){
     primary_meter$EV = FALSE
     
     # make sure dates are datetime values
-    primary_meter$start_full = as.POSIXct(primary_meter$start_full, format = "%m-%d-%Y %H:%M")
+    primary_meter$start_full = as.POSIXct(primary_meter$start_full, format = "%m-%d-%Y %H:%M", tz = "America/Chicago")
     
     #join weather data on timestamps
     output_df = primary_meter %>%
         left_join(weather_df, by=("start_full"))
+    
+    # convert dates back to chars and drop other columns
+    output_df$start_full <- format(output_df$start_full, "%m-%d-%Y %H:%M")
+    output_df = output_df %>% select(-c("start_dt", "end_dt"))
     
     # save the labeled data
     output_file = sub(DIR_PATH, OUTPUT_PATH, primary_file)
