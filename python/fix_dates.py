@@ -18,37 +18,17 @@ import csv
 import os
 import os.path
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 FIELDS = ["meter_num", "value", "vee-value", "unit-of-measure",
           "channel", "start_full", "start_date", "start_time", "end_full", "end_date", "end_time"]
 
-
-def is_dst(dt):
-    """ checks if given date is within DST
-    code from: https://stackoverflow.com/a/38726465
-    """
-    if dt.year < 2007:
-        raise ValueError()
-    dst_start = datetime(dt.year, 3, 8, 2, 0)
-    dst_start += timedelta(6 - dst_start.weekday())
-    dst_end = datetime(dt.year, 11, 1, 2, 0)
-    dst_end += timedelta(6 - dst_end.weekday())
-    return dst_start <= dt < dst_end
-
+CENTRAL = ZoneInfo("America/Chicago")
 
 def fix_date(utc_date):
-    """convert a given utc timestamp back to the local time"""
-    # get the timezone offset for the local time (in hours)
-    tz_offset = -6
-
-    # check if date is within DST
-    if(is_dst(datetime.strptime(utc_date[0:10], "%Y-%m-%d"))):
-        tz_offset = tz_offset + 1
-
-    # convert and add the offset
-    result = datetime.strptime(utc_date, "%Y-%m-%dT%H:%M:%S.000%z") + timedelta(hours=tz_offset)
-
-    return result
+    """Convert a UTC timestamp string to local (Central) time."""
+    utc_dt = datetime.strptime(utc_date, "%Y-%m-%dT%H:%M:%S.000%z")
+    return utc_dt.astimezone(CENTRAL)
 
 
 def update_csv(file):
